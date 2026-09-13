@@ -90,35 +90,71 @@
                                VerticalAlignment="Center" />
                 </Grid>
 
-                <StackPanel Orientation="Horizontal"
-                            HorizontalAlignment="Center"
-                            Margin="0,22,0,0">
+                <!-- Three zones (left utilities | transport | right utility) in a
+                     fixed-width row so the transport controls stay centred
+                     regardless of the side icon counts being unequal. -->
+                <Grid x:Name="TransportRow" Margin="0,22,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
 
-                    <Button x:Name="PrevButton"
-                            Style="{StaticResource TransportButtonStyle}"
-                            Click="OnPreviousClick">
-                        <Path Width="22" Height="22" Stretch="Uniform"
-                              Fill="{Binding RelativeSource={RelativeSource AncestorType=Button}, Path=Foreground}"
-                              Data="M2,4 H4 V20 H2 Z M12,4 L4,12 L12,20 Z M20,4 L12,12 L20,20 Z" />
-                    </Button>
+                    <StackPanel Grid.Column="0" Orientation="Horizontal"
+                                HorizontalAlignment="Left" VerticalAlignment="Center">
+                        <Button x:Name="VolumeButton" Style="{StaticResource UtilityButtonStyle}">
+                            <Path Width="15" Height="15" Stretch="Uniform"
+                                  Fill="{Binding RelativeSource={RelativeSource AncestorType=Button}, Path=Foreground}"
+                                  Data="M1,9 L1,15 L6,15 L12,20 L12,4 L6,9 Z" />
+                        </Button>
+                        <Button x:Name="MoreButton" Style="{StaticResource UtilityButtonStyle}">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <Ellipse Width="3.5" Height="3.5" Margin="1,0"
+                                         Fill="{Binding RelativeSource={RelativeSource AncestorType=Button}, Path=Foreground}" />
+                                <Ellipse Width="3.5" Height="3.5" Margin="1,0"
+                                         Fill="{Binding RelativeSource={RelativeSource AncestorType=Button}, Path=Foreground}" />
+                                <Ellipse Width="3.5" Height="3.5" Margin="1,0"
+                                         Fill="{Binding RelativeSource={RelativeSource AncestorType=Button}, Path=Foreground}" />
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
 
-                    <Button x:Name="PlayPauseButton"
-                            Style="{StaticResource TransportButtonStyle}"
-                            Click="OnPlayPauseClick">
-                        <Path x:Name="PlayPauseIcon" Width="22" Height="22" Stretch="Uniform"
-                              Fill="{Binding RelativeSource={RelativeSource AncestorType=Button}, Path=Foreground}"
-                              Data="M5,3 L19,12 L5,21 Z" />
-                    </Button>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center">
+                        <Button x:Name="PrevButton"
+                                Style="{StaticResource TransportButtonStyle}"
+                                Click="OnPreviousClick">
+                            <Path Width="22" Height="22" Stretch="Uniform"
+                                  Fill="{Binding RelativeSource={RelativeSource AncestorType=Button}, Path=Foreground}"
+                                  Data="M12,4 L4,12 L12,20 Z M20,4 L12,12 L20,20 Z" />
+                        </Button>
 
-                    <Button x:Name="NextButton"
-                            Style="{StaticResource TransportButtonStyle}"
-                            Click="OnNextClick">
-                        <Path Width="22" Height="22" Stretch="Uniform"
-                              Fill="{Binding RelativeSource={RelativeSource AncestorType=Button}, Path=Foreground}"
-                              Data="M4,4 L12,12 L4,20 Z M12,4 L20,12 L12,20 Z M20,4 H22 V20 H20 Z" />
-                    </Button>
+                        <Button x:Name="PlayPauseButton"
+                                Style="{StaticResource TransportButtonStyle}"
+                                Click="OnPlayPauseClick">
+                            <Path x:Name="PlayPauseIcon" Width="22" Height="22" Stretch="Uniform"
+                                  Fill="{Binding RelativeSource={RelativeSource AncestorType=Button}, Path=Foreground}"
+                                  Data="M5,3 L19,12 L5,21 Z" />
+                        </Button>
 
-                </StackPanel>
+                        <Button x:Name="NextButton"
+                                Style="{StaticResource TransportButtonStyle}"
+                                Click="OnNextClick">
+                            <Path Width="22" Height="22" Stretch="Uniform"
+                                  Fill="{Binding RelativeSource={RelativeSource AncestorType=Button}, Path=Foreground}"
+                                  Data="M4,4 L12,12 L4,20 Z M12,4 L20,12 L12,20 Z" />
+                        </Button>
+                    </StackPanel>
+
+                    <StackPanel Grid.Column="2" Orientation="Horizontal"
+                                HorizontalAlignment="Right" VerticalAlignment="Center">
+                        <Button x:Name="CommentButton" Style="{StaticResource UtilityButtonStyle}">
+                            <Path Width="16" Height="16" Stretch="Uniform"
+                                  Stroke="{Binding RelativeSource={RelativeSource AncestorType=Button}, Path=Foreground}"
+                                  StrokeThickness="1.4"
+                                  Data="M2,3 H18 A2,2 0 0 1 20,5 V13 A2,2 0 0 1 18,15 H9 L4,19 V15 H2 A2,2 0 0 1 0,13 V5 A2,2 0 0 1 2,3 Z" />
+                        </Button>
+                    </StackPanel>
+                </Grid>
 
             </StackPanel>
         </Grid>

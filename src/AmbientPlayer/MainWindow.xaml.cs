@@ -166,6 +166,10 @@ public partial class MainWindow : Window
         TitleText.MaxWidth = maxTextWidth;
         SubtitleText.MaxWidth = maxTextWidth;
         ProgressRow.Width = maxTextWidth;
+        // TransportRow's outer columns are both "*" so the transport buttons
+        // stay centred regardless of the (unequal) icon counts either side -
+        // that only works once the Grid actually has a width to distribute.
+        TransportRow.Width = maxTextWidth;
     }
 
     // ------------------------------------------------------------------
