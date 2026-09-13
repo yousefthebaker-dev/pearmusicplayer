@@ -1,30 +1,20 @@
 # Pear Music Player — Ambient Now Playing
 
-A fullscreen now-playing display for Windows 11, styled after Apple Music's
-fullscreen player: album art on a slow-drifting colour gradient derived from
-the art itself, with track title, artist, album and a progress bar.
+Fullscreen now-playing display for Windows, styled after Apple Music's
+fullscreen player. Watches SMTC for a ShairportQt AirPlay session, pulls
+high-res art from the iTunes Search API (ShairportQt only exposes a 125×125
+thumbnail and no album name), and renders it on an animated Perlin-noise
+background derived from the art's colour palette.
 
-It watches Windows System Media Transport Controls (SMTC) for a
-**ShairportQt** AirPlay receiver session and displays whatever is streaming
-to it, resolving high-resolution artwork from the iTunes Search API since
-ShairportQt only publishes a 125×125 thumbnail and no album name.
-
-Full design rationale, the exact matching/scoring algorithm, caching rules
-and acceptance checks live in [`AMBIENT_PLAYER_SPEC.md`](AMBIENT_PLAYER_SPEC.md) -
-read that first if you're changing behaviour, not just this file.
-
-This is a personal, single-user tool. It prioritises "looks right and
-doesn't break during an album" over configurability or packaging.
+Design details, matching/scoring algorithm, and acceptance checks:
+[`AMBIENT_PLAYER_SPEC.md`](AMBIENT_PLAYER_SPEC.md).
 
 ## Requirements
 
-- Windows 10 (1809+) or Windows 11.
-- [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0) with the
-  Windows desktop workload, built/run **on Windows** - the project targets
-  `net8.0-windows10.0.19041.0` for WPF and the SMTC (`Windows.Media.Control`)
-  WinRT projections, neither of which exist outside Windows.
-- ShairportQt (or any AirPlay receiver) running and registered with SMTC,
-  streaming from an iPhone/Apple Music.
+- Windows 10 (1809+) or Windows 11
+- [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0), Windows
+  desktop workload — must build/run on Windows (WPF + SMTC WinRT APIs)
+- ShairportQt (or another AirPlay receiver) registered with SMTC and playing
 
 ## Build & run
 
@@ -33,49 +23,34 @@ dotnet build AmbientPlayer.sln -c Debug
 dotnet run --project src/AmbientPlayer/AmbientPlayer.csproj
 ```
 
-## Publish a single-file executable
+## Publish
 
 ```powershell
 dotnet publish src/AmbientPlayer/AmbientPlayer.csproj -c Release -r win-x64 --self-contained true
 ```
 
-The executable lands under
+Self-contained single-file exe, output under
 `src/AmbientPlayer/bin/Release/net8.0-windows10.0.19041.0/win-x64/publish/`.
-It's self-contained (no separate .NET runtime install needed on the target
-machine).
 
-## Project layout
+## Layout
 
 ```
 src/AmbientPlayer/
-  App.xaml(.cs)              Startup, global exception safety net
-  MainWindow.xaml(.cs)       Renders everything; never touches SMTC or iTunes directly
-  Services/
-    MetadataService.cs       SMTC polling, field cleaning, settle debounce, transport controls
-    ArtworkService.cs        iTunes Search API lookup, scoring, caching, rate limiting
-    PaletteService.cs        Median-cut colour extraction in Lab space
-    AppSettings.cs           The one thing persisted across runs: last monitor
-  Rendering/
-    MeshGradientBackground.cs  Animated mesh-gradient background control
-    ProgressInterpolator.cs    Smooths sparse SMTC timeline updates
-  Native/
-    DisplayRequest.cs        SetThreadExecutionState wrapper (keeps the screen awake)
-    MonitorInterop.cs        Win32 monitor enumeration ("remember last monitor")
-    CursorAutoHide.cs        Hides the cursor after 3s idle
-  Models/                    TrackInfo, PlaybackSnapshot, ArtworkResult
-  Utilities/                 Text normalisation/scoring, Lab colour math, metadata cleaning
+  App.xaml(.cs), MainWindow.xaml(.cs)
+  Services/    MetadataService, ArtworkService, PaletteService, AppSettings
+  Rendering/   MeshGradientBackground, PerlinNoise, ProgressInterpolator
+  Native/      DisplayRequest, MonitorInterop, CursorAutoHide
+  Models/      TrackInfo, PlaybackSnapshot, ArtworkResult
+  Utilities/   text normalisation/scoring, Lab colour math, metadata cleaning
 ```
 
-`smtc_dump.py` and `artwork_watch.py` at the repo root are the original
-prototyping scripts this app's `MetadataService` and `ArtworkService` were
-ported from - kept as reference, not part of the build.
+`smtc_dump.py` and `artwork_watch.py` are the original Python prototypes
+`MetadataService`/`ArtworkService` were ported from.
 
 ## Configuration
 
-There is deliberately no settings UI (out of scope for v1 - see spec section
-10). The one thing that's configurable is the SMTC sender filter, which
-defaults to `"ShairportQt"`; if you ever need to point this at a different
-AirPlay receiver, pass a different substring into `new MetadataService(...)`
+No settings UI (see spec §10). To point at a different AirPlay receiver than
+ShairportQt, change the filter string passed to `new MetadataService(...)`
 in `MainWindow`'s constructor.
 
 ## Controls
@@ -83,9 +58,9 @@ in `MainWindow`'s constructor.
 | Key | Action |
 | --- | --- |
 | `Esc` | Exit |
-| `Space` | Play / pause (controls the sending iPhone via SMTC) |
+| `Space` | Play / pause |
 | `←` / `→` | Previous / next track |
 | `F` | Toggle fullscreen |
 
-Transport buttons and keyboard media controls act on the **sending device**,
-not local playback, and are disabled whenever no session is being tracked.
+Transport controls act on the sending device via SMTC, not local playback,
+and disable when no session is tracked.
