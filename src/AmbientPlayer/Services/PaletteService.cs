@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.IO;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using AmbientPlayer.Utilities;
@@ -156,9 +157,52 @@ public sealed class PaletteService
             accepted.Add(jittered);
         }
 
+        // Force real contrast regardless of how flat the source cover is -
+        // darkening every colour by the same proportional formula preserves
+        // a narrow source range as a narrow (and visually flat/low-contrast)
+        // background range. Apple's own renderer clearly does something
+        // equivalent: a warm, low-contrast sepia cover still produces a
+        // background with a near-black region and a bright, saturated one.
+        StretchLightness(accepted, floorL: 1.0, ceilL: 75.0);
+
         return accepted
             .Select(lab => ColorLab.ToRgb(ColorLab.ForBackground(lab)))
             .ToList();
+    }
+
+    /// <summary>
+    /// Remaps lightness so the darkest accepted colour lands near
+    /// <paramref name="floorL"/> and the lightest near <paramref name="ceilL"/>,
+    /// preserving relative order. Falls back to an even spread by rank when
+    /// the source colours are nearly identical in lightness (a genuinely
+    /// flat/solid cover), since a near-zero range would otherwise amplify
+    /// into noise rather than a clean stretch.
+    /// </summary>
+    private static void StretchLightness(List<LabColor> colors, double floorL, double ceilL)
+    {
+        if (colors.Count == 0) return;
+
+        var minL = colors.Min(c => c.L);
+        var maxL = colors.Max(c => c.L);
+        var range = maxL - minL;
+
+        if (range < 8.0)
+        {
+            var rankOrder = Enumerable.Range(0, colors.Count).OrderBy(i => colors[i].L).ToList();
+            var step = colors.Count > 1 ? (ceilL - floorL) / (colors.Count - 1) : 0.0;
+            for (var rank = 0; rank < rankOrder.Count; rank++)
+            {
+                var i = rankOrder[rank];
+                colors[i] = new LabColor(floorL + step * rank, colors[i].A, colors[i].B);
+            }
+            return;
+        }
+
+        for (var i = 0; i < colors.Count; i++)
+        {
+            var t = (colors[i].L - minL) / range;
+            colors[i] = new LabColor(floorL + t * (ceilL - floorL), colors[i].A, colors[i].B);
+        }
     }
 
     private static List<List<LabColor>> MedianCut(List<LabColor> samples, int targetCount)

@@ -75,11 +75,21 @@ public static class ColorLab
         return 0.2126 * Lin(r) + 0.7152 * Lin(g) + 0.0722 * Lin(b);
     }
 
-    /// <summary>Darkens and desaturates towards a target lightness, for using an album colour behind white text.</summary>
-    public static LabColor ForBackground(LabColor lab, double targetL = 28.0, double chromaScale = 0.55)
+    /// <summary>
+    /// Desaturates for using an album colour behind white text. Lightness is
+    /// left alone deliberately - PaletteService's contrast stretch already
+    /// sets it to the right value, and re-darkening it here would undo that
+    /// stretch and flatten the contrast right back out.
+    ///
+    /// Chroma is cut more aggressively the darker the colour is: a real
+    /// shadow has very little saturation regardless of the source hue, so
+    /// without this a "dark" cluster still reads as dark brown/muddy rather
+    /// than a genuine near-black.
+    /// </summary>
+    public static LabColor ForBackground(LabColor lab, double maxChromaScale = 1.1)
     {
-        var l = Math.Min(lab.L, targetL);
-        return new LabColor(l, lab.A * chromaScale, lab.B * chromaScale);
+        var chromaScale = Math.Clamp(lab.L / 55.0, 0.1, 1.0) * maxChromaScale;
+        return new LabColor(lab.L, lab.A * chromaScale, lab.B * chromaScale);
     }
 
     private static (double x, double y, double z) RgbToXyz(byte r, byte g, byte b)

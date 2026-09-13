@@ -13,10 +13,14 @@
     <Platforms>x64</Platforms>
     <ApplicationManifest>app.manifest</ApplicationManifest>
 
-    <!-- Personal single-machine tool: ship as one self-contained exe, no
-         framework dependency required on the target PC. -->
-    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
-    <SelfContained>true</SelfContained>
+    <!-- Deliberately NOT set here: RuntimeIdentifier / SelfContained. Setting
+         those unconditionally would make ordinary `dotnet build`/`dotnet run`
+         behave like a self-contained RID-specific build, which build/run do
+         not reliably produce a complete runtime layout for (only `publish`
+         does) - the exe ends up missing native runtime files next to it and
+         fails to launch. Pass them on the publish command line instead (see
+         README "Publish a single-file executable"); these two properties are
+         inert until a RID is supplied there. -->
     <PublishSingleFile>true</PublishSingleFile>
     <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
     <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>

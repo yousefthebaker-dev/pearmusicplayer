@@ -10,6 +10,7 @@
     <SolidColorBrush x:Key="ProgressFillBrush" Color="White" />
     <SolidColorBrush x:Key="TransportBrush" Color="White" />
     <SolidColorBrush x:Key="TransportDisabledBrush" Color="White" Opacity="0.25" />
+    <SolidColorBrush x:Key="UtilityBrush" Color="White" Opacity="0.65" />
 
     <Style x:Key="TransportButtonStyle" TargetType="Button">
         <Setter Property="Background" Value="Transparent" />
@@ -37,6 +38,23 @@
                 <Setter Property="Opacity" Value="0.8" />
             </Trigger>
         </Style.Triggers>
+    </Style>
+
+    <!-- Smaller, dimmer secondary controls (volume, more, comments) that sit
+         either side of the main transport row without competing with it. -->
+    <Style x:Key="UtilityButtonStyle" TargetType="Button" BasedOn="{StaticResource TransportButtonStyle}">
+        <Setter Property="Foreground" Value="{StaticResource UtilityBrush}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border Background="{TemplateBinding Background}" CornerRadius="999">
+                        <ContentPresenter HorizontalAlignment="Center"
+                                          VerticalAlignment="Center"
+                                          Margin="8" />
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
     </Style>
 
 </ResourceDictionary>

@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.IO;
 using System.Threading;
 using System.Windows;
 using System.Windows.Input;
@@ -161,10 +162,16 @@ public partial class MainWindow : Window
         TitleText.FontSize = Math.Max(18.0, height * 0.022);
         SubtitleText.FontSize = Math.Max(13.0, height * 0.016);
 
-        var maxTextWidth = Math.Max(artSize, Math.Min(ActualWidth * 0.8, artSize * 1.6));
-        TitleText.MaxWidth = maxTextWidth;
-        SubtitleText.MaxWidth = maxTextWidth;
-        ProgressRow.Width = maxTextWidth;
+        // Aligned to the album art's own width, not wider - the progress bar
+        // and transport row (including its side icons) should never extend
+        // past the art's edges.
+        TitleText.MaxWidth = artSize;
+        SubtitleText.MaxWidth = artSize;
+        ProgressRow.Width = artSize;
+        // TransportRow's outer columns are both "*" so the transport buttons
+        // stay centred regardless of the (unequal) icon counts either side -
+        // that only works once the Grid actually has a width to distribute.
+        TransportRow.Width = artSize;
     }
 
     // ------------------------------------------------------------------
@@ -230,12 +237,22 @@ public partial class MainWindow : Window
         _ = Dispatcher.InvokeAsync(() => HandleTrackChangedAsync(track));
     }
 
+    private static readonly Geometry PlayIconGeometry = CreateFrozenGeometry("M5,3 L19,12 L5,21 Z");
+    private static readonly Geometry PauseIconGeometry = CreateFrozenGeometry("M6,4 H10 V20 H6 Z M14,4 H18 V20 H14 Z");
+
+    private static Geometry CreateFrozenGeometry(string data)
+    {
+        var geometry = Geometry.Parse(data);
+        geometry.Freeze();
+        return geometry;
+    }
+
     private void OnPlaybackUpdated(object? sender, PlaybackSnapshot snapshot)
     {
         Dispatcher.BeginInvoke(() =>
         {
             _progress.Update(snapshot);
-            PlayPauseGlyph.Text = snapshot.Status == PlaybackStatus.Playing ? "⏸" : "▶";
+            PlayPauseIcon.Data = snapshot.Status == PlaybackStatus.Playing ? PauseIconGeometry : PlayIconGeometry;
         });
     }
 
