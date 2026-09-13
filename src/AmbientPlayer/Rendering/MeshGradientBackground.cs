@@ -2,61 +2,47 @@ using System.Diagnostics;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using System.Windows.Media.Effects;
 using System.Windows.Media.Imaging;
-using System.Windows.Shapes;
+using System.Windows.Threading;
 using AmbientPlayer.Utilities;
 
 namespace AmbientPlayer.Rendering;
 
 /// <summary>
-/// The animated mesh-gradient background: several soft radial "blobs" whose
-/// centres drift on independent slow sine cycles, colour-transitioning
-/// smoothly (in Lab space) whenever a new palette is set. Blob positions are
-/// a pure function of wall-clock time since this control was created, so a
-/// track change never resets the drift - continuity is the whole effect.
+/// The background: a slowly-evolving Perlin noise field at a medium spatial
+/// scale, colour-mapped through the current palette (dark end to light end)
+/// and softened with a slight Gaussian blur. Rendered at low resolution -
+/// noise this smooth doesn't need per-pixel detail - and upscaled with
+/// bilinear filtering, which does most of the softening even before the
+/// blur is added.
 ///
-/// No shader: this is exactly the "layer several RadialGradientBrush
-/// rectangles with animated Center points, over a base fill" approach
-/// AMBIENT_PLAYER_SPEC.md section 7 calls out as genuinely sufficient for v1.
+/// Continuity across track changes comes from advancing the noise's time
+/// coordinate from wall-clock time since this control was created; it is
+/// never reset.
 /// </summary>
 public sealed class MeshGradientBackground : Grid
 {
-    private const int BlobCount = 6;
-    private const double DriftRadius = 0.22; // normalised units - large, slow, visible drift
-    // Randomised per blob rather than one fixed value: a uniform 0.95 for
-    // every blob meant whichever one sat on top of the z-order alone nearly
-    // blanketed the window, hiding the others almost entirely. Varying the
-    // size keeps several blobs simultaneously visible and reads as more
-    // organic than identical circles.
-    private const double MinBlobRadius = 0.42;
-    private const double MaxBlobRadius = 0.75;
-    private const double MinPeriodSeconds = 20.0;
-    private const double MaxPeriodSeconds = 60.0;
+    private const int TextureSize = 64;
+    private const double SpatialFrequency = 3.5; // noise cycles across the texture - "medium" scale
+    private const double TimeSpeed = 0.035; // noise-space units per second - slow evolution
     private const double PaletteTransitionSeconds = 2.0;
-    private const int NoiseTileSize = 64;
-    // Noise pixels are full-range grey (0-255) composited at this alpha, so
-    // the effective per-pixel nudge averages out to roughly the spec's
-    // ~1.5/255 offset (127 * 4/255 ~= 2) rather than a visible texture.
-    private const byte NoiseAlpha = 4;
+    private static readonly TimeSpan UpdateInterval = TimeSpan.FromMilliseconds(50); // ~20 Hz recompute
 
-    // Fixed layout for up to six blobs, spread roughly evenly with one near
-    // centre. Fewer blobs (a palette with fewer accepted colours) just uses
-    // a prefix of this list.
-    private static readonly (double X, double Y)[] BlobLayout =
+    private static readonly List<LabColor> NeutralRamp =
     [
-        (0.22, 0.28), (0.78, 0.22), (0.50, 0.50),
-        (0.15, 0.78), (0.85, 0.75), (0.50, 0.12),
+        ColorLab.FromRgb(0x14, 0x16, 0x1c),
+        ColorLab.FromRgb(0x2a, 0x2d, 0x39),
     ];
 
     private readonly Stopwatch _clock = Stopwatch.StartNew();
-    private readonly List<BlobState> _blobs = [];
-    // Fixed seed: this spreads each blob's period/phase deterministically so
-    // a restart doesn't reshuffle the drift character - it's not meant to
-    // look "random" to the viewer, just uncoordinated between blobs.
-    private readonly Random _rng = new(20240101);
+    private readonly PerlinNoise _noise = new(20240101);
+    private readonly WriteableBitmap _bitmap;
+    private readonly DispatcherTimer _timer;
+    private readonly byte[] _pixels = new byte[TextureSize * TextureSize * 4];
 
-    private IReadOnlyList<LabColor> _fromPalette = [];
-    private IReadOnlyList<LabColor> _toPalette = [];
+    private IReadOnlyList<LabColor> _fromRamp = [];
+    private IReadOnlyList<LabColor> _toRamp = [];
     private double _transitionStartSeconds;
     private bool _hasPalette;
 
@@ -65,69 +51,49 @@ public sealed class MeshGradientBackground : Grid
         ClipToBounds = true;
         Background = Brushes.Transparent;
 
-        var baseFill = new Rectangle { Fill = new SolidColorBrush(Color.FromRgb(0x10, 0x10, 0x14)) };
-        Children.Add(baseFill);
+        _bitmap = new WriteableBitmap(TextureSize, TextureSize, 96, 96, PixelFormats.Bgra32, null);
 
-        var blobCount = Math.Min(BlobCount, BlobLayout.Length);
-        for (var i = 0; i < blobCount; i++)
+        var image = new Image
         {
-            var (baseX, baseY) = BlobLayout[i];
+            Source = _bitmap,
+            Stretch = Stretch.Fill,
+            IsHitTestVisible = false,
+            // "Slight" blur on top of the low-res upscale - not a shader,
+            // just WPF's own (Gaussian-kernel) BlurEffect.
+            Effect = new BlurEffect { Radius = 28, KernelType = KernelType.Gaussian },
+        };
+        RenderOptions.SetBitmapScalingMode(image, BitmapScalingMode.Linear);
+        Children.Add(image);
 
-            var core = new GradientStop(Colors.Transparent, 0.0);
-            // Held solid out to just past half the radius instead of fading
-            // from the very centre - a plain 2-stop radial reads as soft
-            // noise; this is what makes each blob look like an actual shape
-            // with a defined (if soft) edge, only fading in the outer half.
-            var mid = new GradientStop(Colors.Transparent, 0.55);
-            var edge = new GradientStop(Colors.Transparent, 1.0);
-            var radius = MinBlobRadius + _rng.NextDouble() * (MaxBlobRadius - MinBlobRadius);
-            var brush = new RadialGradientBrush
-            {
-                GradientOrigin = new Point(baseX, baseY),
-                Center = new Point(baseX, baseY),
-                RadiusX = radius,
-                RadiusY = radius,
-            };
-            brush.GradientStops.Add(core);
-            brush.GradientStops.Add(mid);
-            brush.GradientStops.Add(edge);
-            // Deliberately not frozen - Center and stop colours are mutated
-            // every frame and on every palette transition.
+        RenderTexture(); // paint an initial frame immediately rather than waiting for the first tick
 
-            var rect = new Rectangle { Fill = brush };
-            Children.Add(rect);
+        _timer = new DispatcherTimer(DispatcherPriority.Background) { Interval = UpdateInterval };
+        _timer.Tick += (_, _) => RenderTexture();
 
-            _blobs.Add(new BlobState(rect, brush, core, mid, edge, baseX, baseY,
-                PeriodX: MinPeriodSeconds + _rng.NextDouble() * (MaxPeriodSeconds - MinPeriodSeconds),
-                PeriodY: MinPeriodSeconds + _rng.NextDouble() * (MaxPeriodSeconds - MinPeriodSeconds),
-                PhaseX: _rng.NextDouble() * Math.PI * 2,
-                PhaseY: _rng.NextDouble() * Math.PI * 2));
-        }
-
-        Children.Add(new Rectangle { Fill = BuildNoiseBrush(), IsHitTestVisible = false });
-
-        Loaded += (_, _) => CompositionTarget.Rendering += OnRendering;
-        Unloaded += (_, _) => CompositionTarget.Rendering -= OnRendering;
+        Loaded += (_, _) => _timer.Start();
+        Unloaded += (_, _) => _timer.Stop();
     }
 
     /// <summary>
     /// Starts a ~2s Lab-space transition from whatever the background is
     /// currently showing to <paramref name="palette"/>. Safe to call again
-    /// mid-transition - the current blended state becomes the new start
+    /// mid-transition - the current blended ramp becomes the new start
     /// point, so back-to-back track changes never jump.
     /// </summary>
     public void SetPalette(IReadOnlyList<Color> palette)
     {
-        if (palette.Count == 0 || _blobs.Count == 0) return;
+        if (palette.Count == 0) return;
 
-        var currentLab = new List<LabColor>(_blobs.Count);
-        for (var i = 0; i < _blobs.Count; i++)
-        {
-            currentLab.Add(_hasPalette ? BlendedColor(i) : ColorLab.FromRgb(palette[i % palette.Count].R, palette[i % palette.Count].G, palette[i % palette.Count].B));
-        }
+        // Sorted dark-to-light: the noise value maps linearly across this
+        // ramp, so ordering it by lightness is what makes low noise read as
+        // shadow and high noise read as the brightest album colour.
+        var newRamp = palette
+            .Select(c => ColorLab.FromRgb(c.R, c.G, c.B))
+            .OrderBy(lab => lab.L)
+            .ToList();
 
-        _fromPalette = currentLab;
-        _toPalette = palette.Select(c => ColorLab.FromRgb(c.R, c.G, c.B)).ToList();
+        _fromRamp = _hasPalette ? CurrentRamp() : newRamp;
+        _toRamp = newRamp;
         _transitionStartSeconds = _clock.Elapsed.TotalSeconds;
         _hasPalette = true;
     }
@@ -135,83 +101,58 @@ public sealed class MeshGradientBackground : Grid
     private double TransitionT() =>
         Math.Clamp((_clock.Elapsed.TotalSeconds - _transitionStartSeconds) / PaletteTransitionSeconds, 0.0, 1.0);
 
-    private LabColor BlendedColor(int blobIndex)
+    private List<LabColor> CurrentRamp()
     {
-        var from = _fromPalette.Count > 0 ? _fromPalette[blobIndex % _fromPalette.Count] : default;
-        var to = _toPalette.Count > 0 ? _toPalette[blobIndex % _toPalette.Count] : from;
-        return LabColor.Lerp(from, to, TransitionT());
+        var t = TransitionT();
+        var count = Math.Max(_fromRamp.Count, _toRamp.Count);
+        var ramp = new List<LabColor>(count);
+        for (var i = 0; i < count; i++)
+        {
+            var from = _fromRamp.Count > 0 ? _fromRamp[i % _fromRamp.Count] : default;
+            var to = _toRamp.Count > 0 ? _toRamp[i % _toRamp.Count] : from;
+            ramp.Add(LabColor.Lerp(from, to, t));
+        }
+        return ramp;
     }
 
-    private void OnRendering(object? sender, EventArgs e)
+    private void RenderTexture()
     {
-        var t = _clock.Elapsed.TotalSeconds;
+        var ramp = _hasPalette ? CurrentRamp() : NeutralRamp;
+        if (ramp.Count == 0) return;
 
-        for (var i = 0; i < _blobs.Count; i++)
+        var t = _clock.Elapsed.TotalSeconds * TimeSpeed;
+
+        for (var py = 0; py < TextureSize; py++)
         {
-            var blob = _blobs[i];
-            var x = blob.BaseX + DriftRadius * Math.Sin(2 * Math.PI * t / blob.PeriodX + blob.PhaseX);
-            var y = blob.BaseY + DriftRadius * Math.Sin(2 * Math.PI * t / blob.PeriodY + blob.PhaseY);
-            var point = new Point(x, y);
-            blob.Brush.Center = point;
-            blob.Brush.GradientOrigin = point;
-
-            if (_hasPalette)
+            var ny = (double)py / TextureSize * SpatialFrequency;
+            for (var px = 0; px < TextureSize; px++)
             {
-                var color = ColorLab.ToRgb(BlendedColor(i));
-                blob.CoreStop.Color = color;
-                blob.MidStop.Color = color;
-                blob.EdgeStop.Color = Color.FromArgb(0, color.R, color.G, color.B);
+                var nx = (double)px / TextureSize * SpatialFrequency;
+                var n = _noise.Fbm(nx, ny, t, octaves: 3, persistence: 0.5);
+                var normalised = Math.Clamp((n + 1.0) * 0.5, 0.0, 1.0);
+
+                var color = ColorLab.ToRgb(SampleRamp(ramp, normalised));
+
+                var idx = (py * TextureSize + px) * 4;
+                _pixels[idx] = color.B;
+                _pixels[idx + 1] = color.G;
+                _pixels[idx + 2] = color.R;
+                _pixels[idx + 3] = 255;
             }
         }
+
+        _bitmap.WritePixels(new Int32Rect(0, 0, TextureSize, TextureSize), _pixels, TextureSize * 4, 0);
     }
 
-    /// <summary>
-    /// A tiled, near-invisible noise texture applied as the final layer.
-    /// Large smooth gradients band badly at 8-bit colour, and it is very
-    /// visible on the near-monochrome palettes this library tends to
-    /// produce; this fakes the "per-pixel hash offset" dithering described
-    /// in the spec without needing a pixel shader.
-    /// </summary>
-    private static ImageBrush BuildNoiseBrush()
+    private static LabColor SampleRamp(List<LabColor> ramp, double t)
     {
-        var bitmap = new WriteableBitmap(NoiseTileSize, NoiseTileSize, 96, 96, PixelFormats.Bgra32, null);
-        var rng = new Random(7); // fixed seed - a static, non-animated grain tile
-        var pixels = new byte[NoiseTileSize * NoiseTileSize * 4];
+        if (ramp.Count == 1) return ramp[0];
 
-        for (var i = 0; i < NoiseTileSize * NoiseTileSize; i++)
-        {
-            var v = (byte)rng.Next(0, 256);
-            var idx = i * 4;
-            pixels[idx] = v;       // B
-            pixels[idx + 1] = v;   // G
-            pixels[idx + 2] = v;   // R
-            pixels[idx + 3] = NoiseAlpha;
-        }
+        var scaled = Math.Clamp(t, 0.0, 1.0) * (ramp.Count - 1);
+        var index = (int)Math.Floor(scaled);
+        if (index >= ramp.Count - 1) return ramp[^1];
 
-        bitmap.WritePixels(new Int32Rect(0, 0, NoiseTileSize, NoiseTileSize), pixels, NoiseTileSize * 4, 0);
-        bitmap.Freeze();
-
-        var brush = new ImageBrush(bitmap)
-        {
-            TileMode = TileMode.Tile,
-            Viewport = new Rect(0, 0, NoiseTileSize, NoiseTileSize),
-            ViewportUnits = BrushMappingMode.Absolute,
-            Stretch = Stretch.None,
-        };
-        brush.Freeze();
-        return brush;
+        var frac = scaled - index;
+        return LabColor.Lerp(ramp[index], ramp[index + 1], frac);
     }
-
-    private sealed record BlobState(
-        Rectangle Element,
-        RadialGradientBrush Brush,
-        GradientStop CoreStop,
-        GradientStop MidStop,
-        GradientStop EdgeStop,
-        double BaseX,
-        double BaseY,
-        double PeriodX,
-        double PeriodY,
-        double PhaseX,
-        double PhaseY);
 }
