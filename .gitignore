@@ -1,0 +1,13 @@
+# .NET build output
+bin/
+obj/
+
+# Rider / VS user files
+.vs/
+*.user
+*.suo
+
+# Runtime artwork cache / settings (written under %LOCALAPPDATA%, not the repo -
+# ignored here in case a debug run ever points its rootDirectory at the repo)
+artwork/
+cache.json
