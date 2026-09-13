@@ -24,10 +24,10 @@ namespace AmbientPlayer.Rendering;
 public sealed class MeshGradientBackground : Grid
 {
     private const int TextureSize = 64;
-    private const double SpatialFrequency = 3.5; // noise cycles across the texture - "medium" scale
-    private const double TimeSpeed = 0.035; // noise-space units per second - slow evolution
+    private const double SpatialFrequency = 1.8; // fewer, larger cycles across the texture
+    private const double TimeSpeed = 0.11; // noise-space units per second
     private const double PaletteTransitionSeconds = 2.0;
-    private static readonly TimeSpan UpdateInterval = TimeSpan.FromMilliseconds(50); // ~20 Hz recompute
+    private static readonly TimeSpan UpdateInterval = TimeSpan.FromMilliseconds(33); // ~30 Hz - keeps the faster evolution smooth
 
     private static readonly List<LabColor> NeutralRamp =
     [
