@@ -29,13 +29,6 @@
             <StackPanel Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Center">
 
                 <Grid x:Name="ArtworkShadowHost" HorizontalAlignment="Center">
-                    <Grid.Effect>
-                        <DropShadowEffect Color="Black"
-                                           Opacity="0.45"
-                                           BlurRadius="60"
-                                           ShadowDepth="14"
-                                           Direction="270" />
-                    </Grid.Effect>
 
                     <!-- Two layers so a track change can crossfade between them
                          (400ms) instead of popping. Rounded corners come from
