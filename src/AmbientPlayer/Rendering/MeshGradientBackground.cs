@@ -22,7 +22,8 @@ namespace AmbientPlayer.Rendering;
 public sealed class MeshGradientBackground : Grid
 {
     private const int BlobCount = 6;
-    private const double DriftRadius = 0.15; // normalised units
+    private const double DriftRadius = 0.22; // normalised units - large, slow, visible drift
+    private const double BlobRadius = 0.95; // large, heavily-overlapping blobs read as one shifting field rather than distinct pools
     private const double MinPeriodSeconds = 20.0;
     private const double MaxPeriodSeconds = 60.0;
     private const double PaletteTransitionSeconds = 2.0;
@@ -72,8 +73,8 @@ public sealed class MeshGradientBackground : Grid
             {
                 GradientOrigin = new Point(baseX, baseY),
                 Center = new Point(baseX, baseY),
-                RadiusX = 0.55,
-                RadiusY = 0.55,
+                RadiusX = BlobRadius,
+                RadiusY = BlobRadius,
             };
             brush.GradientStops.Add(core);
             brush.GradientStops.Add(edge);
@@ -90,7 +91,6 @@ public sealed class MeshGradientBackground : Grid
                 PhaseY: _rng.NextDouble() * Math.PI * 2));
         }
 
-        Children.Add(BuildVignette());
         Children.Add(new Rectangle { Fill = BuildNoiseBrush(), IsHitTestVisible = false });
 
         Loaded += (_, _) => CompositionTarget.Rendering += OnRendering;
@@ -149,25 +149,6 @@ public sealed class MeshGradientBackground : Grid
                 blob.EdgeStop.Color = Color.FromArgb(0, color.R, color.G, color.B);
             }
         }
-    }
-
-    private static Rectangle BuildVignette()
-    {
-        // Starts darkening well before the edge and goes nearly to black at
-        // the corners - a weak vignette is what makes the mesh read as a
-        // flat, uniform wash instead of Apple Music's depth.
-        var brush = new RadialGradientBrush
-        {
-            GradientOrigin = new Point(0.5, 0.5),
-            Center = new Point(0.5, 0.5),
-            RadiusX = 0.75,
-            RadiusY = 0.75,
-        };
-        brush.GradientStops.Add(new GradientStop(Colors.Transparent, 0.0));
-        brush.GradientStops.Add(new GradientStop(Color.FromArgb(60, 0, 0, 0), 0.4));
-        brush.GradientStops.Add(new GradientStop(Color.FromArgb(210, 0, 0, 0), 1.0));
-        brush.Freeze();
-        return new Rectangle { Fill = brush, IsHitTestVisible = false };
     }
 
     /// <summary>
