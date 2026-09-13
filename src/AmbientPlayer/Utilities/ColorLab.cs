@@ -76,17 +76,14 @@ public static class ColorLab
     }
 
     /// <summary>
-    /// Darkens and desaturates towards a target lightness, for using an
-    /// album colour behind white text. Scales lightness proportionally
-    /// (rather than clamping every colour to the same ceiling) so blobs that
-    /// started brighter than others stay relatively brighter - a hard clamp
-    /// crushes a whole palette to nearly the same dark tone and reads as a
-    /// flat wash instead of the depth/contrast a real background needs.
+    /// Desaturates slightly for using an album colour behind white text.
+    /// Lightness is left alone here deliberately - PaletteService's contrast
+    /// stretch already sets it to the right value, and re-darkening it here
+    /// would undo that stretch and flatten the contrast right back out.
     /// </summary>
-    public static LabColor ForBackground(LabColor lab, double lightnessScale = 0.6, double maxL = 45.0, double chromaScale = 0.7)
+    public static LabColor ForBackground(LabColor lab, double chromaScale = 0.85)
     {
-        var l = Math.Min(lab.L * lightnessScale, maxL);
-        return new LabColor(l, lab.A * chromaScale, lab.B * chromaScale);
+        return new LabColor(lab.L, lab.A * chromaScale, lab.B * chromaScale);
     }
 
     private static (double x, double y, double z) RgbToXyz(byte r, byte g, byte b)

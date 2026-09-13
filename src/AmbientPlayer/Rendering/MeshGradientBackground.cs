@@ -68,6 +68,11 @@ public sealed class MeshGradientBackground : Grid
             var (baseX, baseY) = BlobLayout[i];
 
             var core = new GradientStop(Colors.Transparent, 0.0);
+            // Held solid out to 65% of the radius instead of fading from the
+            // very centre - a plain 2-stop radial reads as soft noise; this
+            // is what makes each blob look like an actual large shape with
+            // a defined (if soft) edge, only fading in the outer third.
+            var mid = new GradientStop(Colors.Transparent, 0.65);
             var edge = new GradientStop(Colors.Transparent, 1.0);
             var brush = new RadialGradientBrush
             {
@@ -77,6 +82,7 @@ public sealed class MeshGradientBackground : Grid
                 RadiusY = BlobRadius,
             };
             brush.GradientStops.Add(core);
+            brush.GradientStops.Add(mid);
             brush.GradientStops.Add(edge);
             // Deliberately not frozen - Center and stop colours are mutated
             // every frame and on every palette transition.
@@ -84,7 +90,7 @@ public sealed class MeshGradientBackground : Grid
             var rect = new Rectangle { Fill = brush };
             Children.Add(rect);
 
-            _blobs.Add(new BlobState(rect, brush, core, edge, baseX, baseY,
+            _blobs.Add(new BlobState(rect, brush, core, mid, edge, baseX, baseY,
                 PeriodX: MinPeriodSeconds + _rng.NextDouble() * (MaxPeriodSeconds - MinPeriodSeconds),
                 PeriodY: MinPeriodSeconds + _rng.NextDouble() * (MaxPeriodSeconds - MinPeriodSeconds),
                 PhaseX: _rng.NextDouble() * Math.PI * 2,
@@ -146,6 +152,7 @@ public sealed class MeshGradientBackground : Grid
             {
                 var color = ColorLab.ToRgb(BlendedColor(i));
                 blob.CoreStop.Color = color;
+                blob.MidStop.Color = color;
                 blob.EdgeStop.Color = Color.FromArgb(0, color.R, color.G, color.B);
             }
         }
@@ -192,6 +199,7 @@ public sealed class MeshGradientBackground : Grid
         Rectangle Element,
         RadialGradientBrush Brush,
         GradientStop CoreStop,
+        GradientStop MidStop,
         GradientStop EdgeStop,
         double BaseX,
         double BaseY,
