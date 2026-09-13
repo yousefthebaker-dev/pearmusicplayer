@@ -104,19 +104,25 @@
                     <Button x:Name="PrevButton"
                             Style="{StaticResource TransportButtonStyle}"
                             Click="OnPreviousClick">
-                        <TextBlock Text="&#x23EE;" FontSize="20" />
+                        <Path Width="22" Height="22" Stretch="Uniform"
+                              Fill="{Binding RelativeSource={RelativeSource AncestorType=Button}, Path=Foreground}"
+                              Data="M2,4 H4 V20 H2 Z M12,4 L4,12 L12,20 Z M20,4 L12,12 L20,20 Z" />
                     </Button>
 
                     <Button x:Name="PlayPauseButton"
                             Style="{StaticResource TransportButtonStyle}"
                             Click="OnPlayPauseClick">
-                        <TextBlock x:Name="PlayPauseGlyph" Text="&#x25B6;" FontSize="20" />
+                        <Path x:Name="PlayPauseIcon" Width="22" Height="22" Stretch="Uniform"
+                              Fill="{Binding RelativeSource={RelativeSource AncestorType=Button}, Path=Foreground}"
+                              Data="M5,3 L19,12 L5,21 Z" />
                     </Button>
 
                     <Button x:Name="NextButton"
                             Style="{StaticResource TransportButtonStyle}"
                             Click="OnNextClick">
-                        <TextBlock Text="&#x23ED;" FontSize="20" />
+                        <Path Width="22" Height="22" Stretch="Uniform"
+                              Fill="{Binding RelativeSource={RelativeSource AncestorType=Button}, Path=Foreground}"
+                              Data="M4,4 L12,12 L4,20 Z M12,4 L20,12 L12,20 Z M20,4 H22 V20 H20 Z" />
                     </Button>
 
                 </StackPanel>

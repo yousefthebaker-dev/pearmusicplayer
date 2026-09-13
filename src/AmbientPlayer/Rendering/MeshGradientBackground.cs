@@ -72,8 +72,8 @@ public sealed class MeshGradientBackground : Grid
             {
                 GradientOrigin = new Point(baseX, baseY),
                 Center = new Point(baseX, baseY),
-                RadiusX = 0.7,
-                RadiusY = 0.7,
+                RadiusX = 0.55,
+                RadiusY = 0.55,
             };
             brush.GradientStops.Add(core);
             brush.GradientStops.Add(edge);
@@ -153,6 +153,9 @@ public sealed class MeshGradientBackground : Grid
 
     private static Rectangle BuildVignette()
     {
+        // Starts darkening well before the edge and goes nearly to black at
+        // the corners - a weak vignette is what makes the mesh read as a
+        // flat, uniform wash instead of Apple Music's depth.
         var brush = new RadialGradientBrush
         {
             GradientOrigin = new Point(0.5, 0.5),
@@ -160,8 +163,9 @@ public sealed class MeshGradientBackground : Grid
             RadiusX = 0.75,
             RadiusY = 0.75,
         };
-        brush.GradientStops.Add(new GradientStop(Colors.Transparent, 0.55));
-        brush.GradientStops.Add(new GradientStop(Color.FromArgb(140, 0, 0, 0), 1.0));
+        brush.GradientStops.Add(new GradientStop(Colors.Transparent, 0.0));
+        brush.GradientStops.Add(new GradientStop(Color.FromArgb(60, 0, 0, 0), 0.4));
+        brush.GradientStops.Add(new GradientStop(Color.FromArgb(210, 0, 0, 0), 1.0));
         brush.Freeze();
         return new Rectangle { Fill = brush, IsHitTestVisible = false };
     }

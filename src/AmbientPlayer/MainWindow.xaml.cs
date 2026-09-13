@@ -231,12 +231,22 @@ public partial class MainWindow : Window
         _ = Dispatcher.InvokeAsync(() => HandleTrackChangedAsync(track));
     }
 
+    private static readonly Geometry PlayIconGeometry = CreateFrozenGeometry("M5,3 L19,12 L5,21 Z");
+    private static readonly Geometry PauseIconGeometry = CreateFrozenGeometry("M6,4 H10 V20 H6 Z M14,4 H18 V20 H14 Z");
+
+    private static Geometry CreateFrozenGeometry(string data)
+    {
+        var geometry = Geometry.Parse(data);
+        geometry.Freeze();
+        return geometry;
+    }
+
     private void OnPlaybackUpdated(object? sender, PlaybackSnapshot snapshot)
     {
         Dispatcher.BeginInvoke(() =>
         {
             _progress.Update(snapshot);
-            PlayPauseGlyph.Text = snapshot.Status == PlaybackStatus.Playing ? "⏸" : "▶";
+            PlayPauseIcon.Data = snapshot.Status == PlaybackStatus.Playing ? PauseIconGeometry : PlayIconGeometry;
         });
     }
 

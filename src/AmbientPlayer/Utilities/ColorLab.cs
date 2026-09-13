@@ -75,10 +75,17 @@ public static class ColorLab
         return 0.2126 * Lin(r) + 0.7152 * Lin(g) + 0.0722 * Lin(b);
     }
 
-    /// <summary>Darkens and desaturates towards a target lightness, for using an album colour behind white text.</summary>
-    public static LabColor ForBackground(LabColor lab, double targetL = 28.0, double chromaScale = 0.55)
+    /// <summary>
+    /// Darkens and desaturates towards a target lightness, for using an
+    /// album colour behind white text. Scales lightness proportionally
+    /// (rather than clamping every colour to the same ceiling) so blobs that
+    /// started brighter than others stay relatively brighter - a hard clamp
+    /// crushes a whole palette to nearly the same dark tone and reads as a
+    /// flat wash instead of the depth/contrast a real background needs.
+    /// </summary>
+    public static LabColor ForBackground(LabColor lab, double lightnessScale = 0.6, double maxL = 45.0, double chromaScale = 0.7)
     {
-        var l = Math.Min(lab.L, targetL);
+        var l = Math.Min(lab.L * lightnessScale, maxL);
         return new LabColor(l, lab.A * chromaScale, lab.B * chromaScale);
     }
 
