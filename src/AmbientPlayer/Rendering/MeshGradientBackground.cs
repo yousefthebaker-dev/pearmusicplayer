@@ -23,7 +23,13 @@ public sealed class MeshGradientBackground : Grid
 {
     private const int BlobCount = 6;
     private const double DriftRadius = 0.22; // normalised units - large, slow, visible drift
-    private const double BlobRadius = 0.95; // large, heavily-overlapping blobs read as one shifting field rather than distinct pools
+    // Randomised per blob rather than one fixed value: a uniform 0.95 for
+    // every blob meant whichever one sat on top of the z-order alone nearly
+    // blanketed the window, hiding the others almost entirely. Varying the
+    // size keeps several blobs simultaneously visible and reads as more
+    // organic than identical circles.
+    private const double MinBlobRadius = 0.42;
+    private const double MaxBlobRadius = 0.75;
     private const double MinPeriodSeconds = 20.0;
     private const double MaxPeriodSeconds = 60.0;
     private const double PaletteTransitionSeconds = 2.0;
@@ -68,18 +74,19 @@ public sealed class MeshGradientBackground : Grid
             var (baseX, baseY) = BlobLayout[i];
 
             var core = new GradientStop(Colors.Transparent, 0.0);
-            // Held solid out to 65% of the radius instead of fading from the
-            // very centre - a plain 2-stop radial reads as soft noise; this
-            // is what makes each blob look like an actual large shape with
-            // a defined (if soft) edge, only fading in the outer third.
-            var mid = new GradientStop(Colors.Transparent, 0.65);
+            // Held solid out to just past half the radius instead of fading
+            // from the very centre - a plain 2-stop radial reads as soft
+            // noise; this is what makes each blob look like an actual shape
+            // with a defined (if soft) edge, only fading in the outer half.
+            var mid = new GradientStop(Colors.Transparent, 0.55);
             var edge = new GradientStop(Colors.Transparent, 1.0);
+            var radius = MinBlobRadius + _rng.NextDouble() * (MaxBlobRadius - MinBlobRadius);
             var brush = new RadialGradientBrush
             {
                 GradientOrigin = new Point(baseX, baseY),
                 Center = new Point(baseX, baseY),
-                RadiusX = BlobRadius,
-                RadiusY = BlobRadius,
+                RadiusX = radius,
+                RadiusY = radius,
             };
             brush.GradientStops.Add(core);
             brush.GradientStops.Add(mid);

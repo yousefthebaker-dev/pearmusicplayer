@@ -76,13 +76,19 @@ public static class ColorLab
     }
 
     /// <summary>
-    /// Desaturates slightly for using an album colour behind white text.
-    /// Lightness is left alone here deliberately - PaletteService's contrast
-    /// stretch already sets it to the right value, and re-darkening it here
-    /// would undo that stretch and flatten the contrast right back out.
+    /// Desaturates for using an album colour behind white text. Lightness is
+    /// left alone deliberately - PaletteService's contrast stretch already
+    /// sets it to the right value, and re-darkening it here would undo that
+    /// stretch and flatten the contrast right back out.
+    ///
+    /// Chroma is cut more aggressively the darker the colour is: a real
+    /// shadow has very little saturation regardless of the source hue, so
+    /// without this a "dark" cluster still reads as dark brown/muddy rather
+    /// than a genuine near-black.
     /// </summary>
-    public static LabColor ForBackground(LabColor lab, double chromaScale = 0.85)
+    public static LabColor ForBackground(LabColor lab, double maxChromaScale = 0.85)
     {
+        var chromaScale = Math.Clamp(lab.L / 55.0, 0.1, 1.0) * maxChromaScale;
         return new LabColor(lab.L, lab.A * chromaScale, lab.B * chromaScale);
     }
 
