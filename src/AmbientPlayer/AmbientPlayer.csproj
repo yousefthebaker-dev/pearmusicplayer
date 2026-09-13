@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
+    <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
+    <RootNamespace>AmbientPlayer</RootNamespace>
+    <AssemblyName>AmbientPlayer</AssemblyName>
+    <UseWPF>true</UseWPF>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <Platforms>x64</Platforms>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+
+    <!-- Personal single-machine tool: ship as one self-contained exe, no
+         framework dependency required on the target PC. -->
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>true</SelfContained>
+    <PublishSingleFile>true</PublishSingleFile>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+
+    <Product>Ambient Now Playing</Product>
+    <AssemblyTitle>Ambient Now Playing</AssemblyTitle>
+    <InvariantGlobalization>false</InvariantGlobalization>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Windows.Media.Control (SMTC) and Windows.Storage.Streams projections
+         come from the Windows SDK metadata implied by the -windows10.0.19041.0
+         TargetFramework suffix - no CsWinRT package reference needed. -->
+  </ItemGroup>
+
+</Project>
