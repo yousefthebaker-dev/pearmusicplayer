@@ -1,0 +1,127 @@
+<Window x:Class="AmbientPlayer.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:rendering="clr-namespace:AmbientPlayer.Rendering"
+        Title="Ambient Now Playing"
+        WindowStyle="None"
+        WindowState="Normal"
+        ResizeMode="NoResize"
+        Topmost="False"
+        Background="Black"
+        SizeChanged="OnWindowSizeChanged"
+        KeyDown="OnWindowKeyDown"
+        Loaded="OnWindowLoaded"
+        Closed="OnWindowClosed">
+
+    <Grid x:Name="RootGrid">
+
+        <rendering:MeshGradientBackground x:Name="MeshBackground" />
+
+        <!-- Sits slightly above true centre: the top spacer gets less of the
+             leftover space than the bottom spacer. -->
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="0.45*" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="0.55*" />
+            </Grid.RowDefinitions>
+
+            <StackPanel Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Center">
+
+                <Grid x:Name="ArtworkShadowHost" HorizontalAlignment="Center">
+                    <Grid.Effect>
+                        <DropShadowEffect Color="Black"
+                                           Opacity="0.45"
+                                           BlurRadius="60"
+                                           ShadowDepth="14"
+                                           Direction="270" />
+                    </Grid.Effect>
+
+                    <!-- Two layers so a track change can crossfade between them
+                         (400ms) instead of popping. Rounded corners come from
+                         the Border itself - no clip geometry needed. -->
+                    <Border x:Name="ArtworkLayerA" CornerRadius="6" Opacity="1" />
+                    <Border x:Name="ArtworkLayerB" CornerRadius="6" Opacity="0" />
+                </Grid>
+
+                <TextBlock x:Name="TitleText"
+                           Text="—"
+                           FontFamily="{StaticResource DisplayFont}"
+                           FontWeight="Bold"
+                           Foreground="{StaticResource TitleBrush}"
+                           HorizontalAlignment="Center"
+                           TextTrimming="CharacterEllipsis"
+                           Margin="0,28,0,0" />
+
+                <TextBlock x:Name="SubtitleText"
+                           Text=" "
+                           FontFamily="{StaticResource BodyFont}"
+                           Foreground="{StaticResource SubtitleBrush}"
+                           HorizontalAlignment="Center"
+                           TextTrimming="CharacterEllipsis"
+                           Margin="0,6,0,0" />
+
+                <Grid x:Name="ProgressRow" Margin="0,26,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <TextBlock x:Name="ElapsedText"
+                               Grid.Column="0"
+                               Text="0:00"
+                               FontFamily="{StaticResource BodyFont}"
+                               Foreground="{StaticResource SubtitleBrush}"
+                               VerticalAlignment="Center" />
+
+                    <Border x:Name="ProgressTrack"
+                            Grid.Column="1"
+                            Height="4"
+                            Margin="14,0"
+                            CornerRadius="2"
+                            Background="{StaticResource ProgressTrackBrush}"
+                            SizeChanged="OnProgressTrackSizeChanged">
+                        <Border x:Name="ProgressFill"
+                                HorizontalAlignment="Left"
+                                Width="0"
+                                CornerRadius="2"
+                                Background="{StaticResource ProgressFillBrush}" />
+                    </Border>
+
+                    <TextBlock x:Name="RemainingText"
+                               Grid.Column="2"
+                               Text="-0:00"
+                               FontFamily="{StaticResource BodyFont}"
+                               Foreground="{StaticResource SubtitleBrush}"
+                               VerticalAlignment="Center" />
+                </Grid>
+
+                <StackPanel Orientation="Horizontal"
+                            HorizontalAlignment="Center"
+                            Margin="0,22,0,0">
+
+                    <Button x:Name="PrevButton"
+                            Style="{StaticResource TransportButtonStyle}"
+                            Click="OnPreviousClick">
+                        <TextBlock Text="&#x23EE;" FontSize="20" />
+                    </Button>
+
+                    <Button x:Name="PlayPauseButton"
+                            Style="{StaticResource TransportButtonStyle}"
+                            Click="OnPlayPauseClick">
+                        <TextBlock x:Name="PlayPauseGlyph" Text="&#x25B6;" FontSize="20" />
+                    </Button>
+
+                    <Button x:Name="NextButton"
+                            Style="{StaticResource TransportButtonStyle}"
+                            Click="OnNextClick">
+                        <TextBlock Text="&#x23ED;" FontSize="20" />
+                    </Button>
+
+                </StackPanel>
+
+            </StackPanel>
+        </Grid>
+    </Grid>
+</Window>
