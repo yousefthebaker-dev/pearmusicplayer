@@ -163,7 +163,7 @@ public sealed class PaletteService
         // background range. Apple's own renderer clearly does something
         // equivalent: a warm, low-contrast sepia cover still produces a
         // background with a near-black region and a bright, saturated one.
-        StretchLightness(accepted, floorL: 3.0, ceilL: 58.0);
+        StretchLightness(accepted, floorL: 1.0, ceilL: 75.0);
 
         return accepted
             .Select(lab => ColorLab.ToRgb(ColorLab.ForBackground(lab)))

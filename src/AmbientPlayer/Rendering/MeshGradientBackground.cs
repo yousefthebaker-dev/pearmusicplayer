@@ -24,8 +24,9 @@ namespace AmbientPlayer.Rendering;
 public sealed class MeshGradientBackground : Grid
 {
     private const int TextureSize = 64;
-    private const double SpatialFrequency = 1.1; // fewer, larger cycles across the texture
-    private const double TimeSpeed = 0.26; // noise-space units per second
+    private const double SpatialFrequency = 0.65; // fewer, larger cycles across the texture
+    private const double TimeSpeed = 0.09; // noise-space units per second
+    private const double ContrastAmount = 2.1; // >1 pushes noise values toward the ramp's extremes
     private const double PaletteTransitionSeconds = 2.0;
     private static readonly TimeSpan UpdateInterval = TimeSpan.FromMilliseconds(16); // ~60 Hz
 
@@ -130,8 +131,9 @@ public sealed class MeshGradientBackground : Grid
                 var nx = (double)px / TextureSize * SpatialFrequency;
                 var n = _noise.Fbm(nx, ny, t, octaves: 3, persistence: 0.5);
                 var normalised = Math.Clamp((n + 1.0) * 0.5, 0.0, 1.0);
+                var contrasted = ApplyContrast(normalised, ContrastAmount);
 
-                var color = ColorLab.ToRgb(SampleRamp(ramp, normalised));
+                var color = ColorLab.ToRgb(SampleRamp(ramp, contrasted));
 
                 var idx = (py * TextureSize + px) * 4;
                 _pixels[idx] = color.B;
@@ -143,6 +145,15 @@ public sealed class MeshGradientBackground : Grid
 
         _bitmap.WritePixels(new Int32Rect(0, 0, TextureSize, TextureSize), _pixels, TextureSize * 4, 0);
     }
+
+    /// <summary>
+    /// Pushes a [0,1] value away from the midpoint by <paramref name="amount"/>
+    /// (a simple S-curve around 0.5, clamped at the ends) so more of the
+    /// field lands near the ramp's dark/light extremes and the transition
+    /// band between them narrows - a photo "contrast" slider, in effect.
+    /// </summary>
+    private static double ApplyContrast(double t, double amount) =>
+        Math.Clamp(0.5 + (t - 0.5) * amount, 0.0, 1.0);
 
     private static LabColor SampleRamp(List<LabColor> ramp, double t)
     {

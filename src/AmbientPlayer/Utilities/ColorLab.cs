@@ -86,7 +86,7 @@ public static class ColorLab
     /// without this a "dark" cluster still reads as dark brown/muddy rather
     /// than a genuine near-black.
     /// </summary>
-    public static LabColor ForBackground(LabColor lab, double maxChromaScale = 0.85)
+    public static LabColor ForBackground(LabColor lab, double maxChromaScale = 1.1)
     {
         var chromaScale = Math.Clamp(lab.L / 55.0, 0.1, 1.0) * maxChromaScale;
         return new LabColor(lab.L, lab.A * chromaScale, lab.B * chromaScale);
